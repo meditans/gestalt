@@ -1,3 +1,9 @@
+:- module(gestalt, [gestalt/1]).
+%@ ERROR: Unknown procedure: module/2
+%@ ERROR:     However, there are definitions for:
+%@ ERROR:         module/1
+%@ false.
+
 :- use_module(library(clpfd)).
 :- use_module(library(dcg/basics)).
 :- use_module(library(clpfd)).
@@ -73,7 +79,7 @@ partial(Fold, Parsed) -->
 toplevelTrace_solutions(TopLevelTrace, Solutions) :-
   phrase(solutions(Solutions), TopLevelTrace).
 
-toplevelGoal(Goal) --> [0-_-_-Goal].
+toplevelGoal(Port-Goal) --> [0-Port-_-Goal].
 
 solutions([]) --> [].
 solutions([Goal :- Attempts|Rest]) -->
@@ -95,57 +101,33 @@ chunkStep(_-exit-false-G, [Attempt|Attempts], Histories1) :-
     maplist({G}/[A, [G|A]]>>true, [Attempt|Attempts], Histories1).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Three example to guide us
+%% Gestalt
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 gestalt(G) :-
     reifyTrace(G, Trace),
+    maplist(Trace),
     trace_toplevel(Trace, TopLevelTrace),
-    toplevelTrace_solutions(TopLevelTrace, Solutions), !,
-    printlist(Solutions).
+    toplevelTrace_solutions(TopLevelTrace, Solutions),
+    asClauses(Solutions, Clauses),
+    maplist(portray_clause, Clauses), !.
 
+simplifyTrue((A, true), A).
+simplifyTrue((A, B), (A, B)) :- dif(B, true).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Three example to guide us
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+list_conjunction([], true).
+list_conjunction([A|As], Result) :-
+    list_conjunction(As, Cs),
+    simplifyTrue((A,Cs), Result).
 
-a(a,b).
-a(c,d).
-b(c,d).
+asClauses([fail-G:-Failures], Clauses) :-
+    distributeFailures(G :- Failures, Clauses).
+asClauses([(exit-G:-Success)|Succs], Clauses) :-
+    unwrapSuccesses([(exit-G:-Success)|Succs], Clauses).
 
-% c has multiple solutions
-c(X,Y) :- a(X,Y).
-c(X,Y) :- b(X,Y).
+distributeFailures(G :- Solutions, DistributedSolutions) :-
+    maplist({G}/[Sol, G:-Sol_]>>list_conjunction(Sol, Sol_), Solutions, DistributedSolutions).
 
-% d has no solution
-d(X,Y) :-
-    a(X,Y),
-    c(Y,X).
+unwrapSuccesses(Successes, UnwrappedSuccesses) :-
+    maplist([exit-G:-[Succs], G:-Succs_]>>list_conjunction(Succs, Succs_), Successes, UnwrappedSuccesses).
 
-e1(a).
-e2(a).
-e2(b).
-e2(_) :- fail.
-e3(X) :- d(X, a).
-e4(X) :-
-    e1(X),
-    e2(Y),
-    e3(Y).
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Tests
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%?- gestalt(c(X,Y)).
-%@ c(a,b):-[[a(a,b)]]
-%@ c(c,d):-[[a(c,d)]]
-%@ c(c,d):-[[b(c,d)]]
-%@ true.
-
-%?- gestalt(d(X,Y)).
-%@ d(_16080,_16082):-[[a(a,b),no-c(b,a)],[a(c,d),no-c(d,c)]]
-%@ true.
-
-%?- gestalt(e4(X)).
-%@ e4(_16582):-[[e1(a),e2(a),no-e3(a)],[e1(a),e2(b),no-e3(b)],[e1(a),no-e2(_16610)]]
-%@ true.
