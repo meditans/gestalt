@@ -36,12 +36,3 @@ e4(X) :-
 %?- gestalt(d(X,Y)).
 
 %?- gestalt(e4(X)).
-
-:- dynamic debugging_info/4.
-
-prolog_trace_interception(Port, Frame, _PC, continue) :-
-    prolog_frame_attribute(Frame, level, Level),
-    prolog_frame_attribute(Frame, goal, Goal),
-    prolog_frame_attribute(Frame, has_alternatives, HasAlternatives),
-    print(debugging_info(Level, Port, HasAlternatives, Goal)),
-    assertz(debugging_info(Level, Port, HasAlternatives, Goal)).

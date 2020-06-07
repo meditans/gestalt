@@ -1,8 +1,4 @@
 :- module(gestalt, [gestalt/1]).
-%@ ERROR: Unknown procedure: module/2
-%@ ERROR:     However, there are definitions for:
-%@ ERROR:         module/1
-%@ false.
 
 :- use_module(library(clpfd)).
 :- use_module(library(dcg/basics)).
@@ -16,7 +12,7 @@
 
 :- dynamic debugging_info/4.
 
-prolog_trace_interception(Port, Frame, _PC, continue) :-
+user:prolog_trace_interception(Port, Frame, _PC, continue) :-
     prolog_frame_attribute(Frame, level, Level),
     prolog_frame_attribute(Frame, goal, Goal),
     prolog_frame_attribute(Frame, has_alternatives, HasAlternatives),
@@ -106,7 +102,6 @@ chunkStep(_-exit-false-G, [Attempt|Attempts], Histories1) :-
 
 gestalt(G) :-
     reifyTrace(G, Trace),
-    maplist(Trace),
     trace_toplevel(Trace, TopLevelTrace),
     toplevelTrace_solutions(TopLevelTrace, Solutions),
     asClauses(Solutions, Clauses),
